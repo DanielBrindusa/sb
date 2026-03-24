@@ -1,9 +1,26 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const fullscreenBtn = document.getElementById("fullscreenBtn");
+const musicBtn = document.getElementById("musicBtn");
+const musicVolumeEl = document.getElementById("musicVolume");
+const musicVolumeValueEl = document.getElementById("musicVolumeValue");
 const restartBtn = document.getElementById("restartBtn");
 const mapSelectEl = document.getElementById("mapSelect");
 const mapNameLabelEl = document.getElementById("mapNameLabel");
+const bgMusic = document.getElementById("bgMusic");
+const winnerMusic = new Audio("misc/winner.mp3");
+winnerMusic.preload = "auto";
+const BOMB_SOUND_PATHS = [
+  "misc/soundeffect/bomb1.mp3",
+  "misc/soundeffect/bomb2.mp3",
+  "misc/soundeffect/bomb3.mp3",
+  "misc/soundeffect/bomb4.mp3"
+];
+const bombSoundPool = BOMB_SOUND_PATHS.map(path => {
+  const audio = new Audio(path);
+  audio.preload = "auto";
+  return audio;
+});
 const appShell = document.getElementById("appShell");
 const appEl = document.querySelector(".app");
 const topbarEl = document.querySelector(".topbar");
@@ -28,6 +45,9 @@ const p1FxEl = document.getElementById("p1Fx");
 const p2FxEl = document.getElementById("p2Fx");
 const p1PickupMessageEl = document.getElementById("p1PickupMessage");
 const p2PickupMessageEl = document.getElementById("p2PickupMessage");
+const winnerModalEl = document.getElementById("winnerModal");
+const winnerModalTitleEl = document.getElementById("winnerModalTitle");
+const winnerOkBtn = document.getElementById("winnerOkBtn");
 
 const TILE = 48;
 const COLS = 33;
@@ -55,8 +75,16 @@ let flames = [];
 let powerUps = [];
 let hiddenPowerUps = new Map();
 let players = [];
+let musicEnabled = false;
+let musicAvailable = true;
 let roundResetTimer = null;
+let pendingRoundAdvance = false;
 let selectedMapKey = "classic";
+let musicVolume = 0.6;
+let winnerAvailable = true;
+let winnerAudioInstance = null;
+let bombSoundsAvailable = true;
+let lastBombSoundIndex = -1;
 
 const SPAWN_P1 = { x: 1, y: 1 };
 const SPAWN_P2 = { x: COLS - 2, y: ROWS - 2 };
@@ -120,102 +148,6 @@ function buildVault() {
   return rowsToStrings(rows);
 }
 
-
-const MAP_THEMES = {
-  classic: {
-    bg: "#153052",
-    floorA: "#16645f",
-    floorB: "#1f7a72",
-    floorInnerA: "#2fb49e",
-    floorInnerB: "#47cdb4",
-    floorHighlight: "rgba(255,255,255,0.16)",
-    floorShadow: "rgba(0,0,0,0.18)",
-    tileStroke: "rgba(8,23,41,0.24)",
-    blockOuter: "#586489",
-    blockInner: "#b2c4f0",
-    blockHighlight: "#dce7ff",
-    blockColumn: "#536089",
-    blockShadow: "#394568",
-    crateOuter: "#875622",
-    crateInner: "#dfa05a",
-    crateCross: "#7b4d18",
-    crateHighlight: "#e9c17f",
-    accent: "#6f95ff",
-    accentSoft: "#dce7ff"
-  },
-  crossfire: {
-    bg: "#3a1620",
-    floorA: "#6a2133",
-    floorB: "#7d2b40",
-    floorInnerA: "#bc4a63",
-    floorInnerB: "#d9657e",
-    floorHighlight: "rgba(255,233,201,0.18)",
-    floorShadow: "rgba(50,8,18,0.24)",
-    tileStroke: "rgba(35,6,14,0.30)",
-    blockOuter: "#5f3b73",
-    blockInner: "#d2b3ff",
-    blockHighlight: "#f0ddff",
-    blockColumn: "#7f56a6",
-    blockShadow: "#412553",
-    crateOuter: "#7d2a19",
-    crateInner: "#dd6c49",
-    crateCross: "#612010",
-    crateHighlight: "#f2b08e",
-    accent: "#ff8da1",
-    accentSoft: "#ffd9e2"
-  },
-  spiral: {
-    bg: "#11253f",
-    floorA: "#1b4c83",
-    floorB: "#235e9a",
-    floorInnerA: "#4a8edd",
-    floorInnerB: "#63a6ef",
-    floorHighlight: "rgba(230,248,255,0.20)",
-    floorShadow: "rgba(7,18,38,0.22)",
-    tileStroke: "rgba(6,20,44,0.28)",
-    blockOuter: "#4f5d7a",
-    blockInner: "#c6d9ff",
-    blockHighlight: "#eef6ff",
-    blockColumn: "#7587aa",
-    blockShadow: "#34415a",
-    crateOuter: "#2f5f64",
-    crateInner: "#58c0bf",
-    crateCross: "#214347",
-    crateHighlight: "#b5fffb",
-    accent: "#7ec7ff",
-    accentSoft: "#e0f5ff"
-  },
-  vault: {
-    bg: "#31210f",
-    floorA: "#6b4d18",
-    floorB: "#7d6020",
-    floorInnerA: "#d2a74f",
-    floorInnerB: "#e3bd67",
-    floorHighlight: "rgba(255,247,214,0.18)",
-    floorShadow: "rgba(52,29,6,0.24)",
-    tileStroke: "rgba(35,19,4,0.28)",
-    blockOuter: "#786b54",
-    blockInner: "#efe0b8",
-    blockHighlight: "#fff6da",
-    blockColumn: "#b49b5a",
-    blockShadow: "#5b4d32",
-    crateOuter: "#6b2f13",
-    crateInner: "#c65f2b",
-    crateCross: "#4e220d",
-    crateHighlight: "#f0b77e",
-    accent: "#ffd567",
-    accentSoft: "#fff0bc"
-  }
-};
-
-function getMapTheme() { return MAP_THEMES[selectedMapKey] || MAP_THEMES.classic; }
-function applyMapTheme() {
-  const theme = getMapTheme();
-  document.documentElement.style.setProperty("--map-accent", theme.accent);
-  document.documentElement.style.setProperty("--map-accent-soft", theme.accentSoft);
-  document.documentElement.style.setProperty("--map-bg", theme.bg);
-}
-
 const MAPS = {
   classic: { name: "CLASSIC RUINS", crateBias: 1.0, template: buildClassic() },
   crossfire: { name: "CROSSFIRE ALLEYS", crateBias: 0.9, template: buildCrossfire() },
@@ -228,7 +160,6 @@ function updateMapLabel() {
   const map = getSelectedMap();
   mapNameLabelEl.textContent = map.name;
   mapSelectEl.value = selectedMapKey;
-  applyMapTheme();
 }
 function createGrid() {
   const map = getSelectedMap();
@@ -367,6 +298,7 @@ function addFlame(tx, ty) { flames.push({ tx, ty, expiresAt: performance.now() +
 function triggerBomb(bomb) {
   bombs.splice(bombs.indexOf(bomb), 1);
   const owner = players.find(p => p.id === bomb.ownerId); if (owner) owner.activeBombs = Math.max(0, owner.activeBombs - 1);
+  playBombSound();
   addFlame(bomb.tx, bomb.ty);
   for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
     for (let step = 1; step <= bomb.power; step++) {
@@ -397,6 +329,69 @@ function collectPowerUps() {
     showPickupMessage(player, getPowerUpMessage(item.type)); updateHud();
   }
 }
+function getRandomBombSoundIndex() {
+  const available = bombSoundPool.length;
+  if (available <= 1) return 0;
+  let idx = Math.floor(Math.random() * available);
+  if (idx === lastBombSoundIndex) idx = (idx + 1 + Math.floor(Math.random() * (available - 1))) % available;
+  lastBombSoundIndex = idx;
+  return idx;
+}
+
+function playBombSound() {
+  if (!bombSoundsAvailable || bombSoundPool.length === 0) return;
+  try {
+    const source = bombSoundPool[getRandomBombSoundIndex()];
+    if (!source) return;
+    const clip = source.cloneNode(true);
+    clip.volume = Math.max(0, Math.min(1, musicVolume));
+    clip.preload = "auto";
+    clip.addEventListener("error", () => {
+      bombSoundsAvailable = bombSoundPool.some(a => a.readyState > 0);
+    }, { once: true });
+    const playPromise = clip.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(() => {});
+    }
+  } catch (err) {
+    // Never let audio break gameplay.
+  }
+}
+
+function stopWinnerSound() {
+  if (winnerAudioInstance) {
+    try {
+      winnerAudioInstance.pause();
+      winnerAudioInstance.currentTime = 0;
+    } catch (err) {}
+    winnerAudioInstance = null;
+  }
+}
+
+function playWinnerSound() {
+  if (!winnerAvailable) return;
+  stopWinnerSound();
+  try {
+    const clip = winnerMusic.cloneNode(true);
+    clip.volume = Math.max(0, Math.min(1, musicVolume));
+    clip.addEventListener("error", () => { winnerAvailable = false; });
+    clip.addEventListener("ended", () => {
+      if (winnerAudioInstance === clip) winnerAudioInstance = null;
+      if (musicEnabled && !gameOver) playMusic();
+    });
+    winnerAudioInstance = clip;
+    if (musicEnabled && bgMusic && !bgMusic.paused) bgMusic.pause();
+    const playPromise = clip.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(() => {
+        if (winnerAudioInstance === clip) winnerAudioInstance = null;
+      });
+    }
+  } catch (err) {
+    winnerAvailable = false;
+  }
+}
+
 function damagePlayers() {
   const now = performance.now();
   for (const flame of flames) {
@@ -415,13 +410,45 @@ function damagePlayers() {
   const alive = players.filter(p => p.alive);
   if (!gameOver && alive.length <= 1) {
     gameOver = true;
-    if (alive.length === 1) { winnerText = `PLAYER ${alive[0].id} WINS!`; scores[alive[0].id - 1] += 1; }
-    else winnerText = "DRAW!";
-    updateHud(); setStatus(winnerText);
-    roundResetTimer = setTimeout(() => { roundNumber += 1; resetRound(); }, ROUND_END_DELAY);
+    pendingRoundAdvance = true;
+    if (alive.length === 1) {
+      winnerText = `YOU WIN, PLAYER ${alive[0].id}!`;
+      scores[alive[0].id - 1] += 1;
+      playWinnerSound();
+    } else {
+      winnerText = "DRAW!";
+    }
+    updateHud();
+    setStatus(winnerText);
+    showWinnerModal(winnerText);
   }
 }
+function showWinnerModal(message) {
+  if (!winnerModalEl || !winnerModalTitleEl) return;
+  winnerModalTitleEl.textContent = message;
+  winnerModalEl.classList.remove("hidden");
+}
+
+function hideWinnerModal() {
+  if (!winnerModalEl) return;
+  winnerModalEl.classList.add("hidden");
+}
+
+function confirmWinnerModal() {
+  if (!pendingRoundAdvance) return;
+  pendingRoundAdvance = false;
+  hideWinnerModal();
+  roundNumber += 1;
+  resetRound();
+}
+
 function resetRound() {
+  stopWinnerSound();
+  hideWinnerModal();
+  pendingRoundAdvance = false;
+  if (musicEnabled && musicAvailable && bgMusic && bgMusic.paused) {
+    tryAutoStartMusic();
+  }
   updateMapLabel();
   grid = createGrid(); bombs = []; flames = []; powerUps = []; hiddenPowerUps = createHiddenPowerUpMap(grid);
   gameOver = false; paused = false; winnerText = "FIGHT!"; setStatus(winnerText);
@@ -451,58 +478,11 @@ function updateBombs(now) { updateBombPassThrough(); for (const bomb of bombs.fi
 function updateFlames(now) { flames = flames.filter(f => now < f.expiresAt); }
 
 function drawBoardBackground() {
-  const theme = getMapTheme();
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle = theme.bg;
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-  for (let y=0; y<ROWS; y++) {
-    for (let x=0; x<COLS; x++) {
-      const px = x * TILE, py = y * TILE;
-      const even = (x + y) % 2 === 0;
-      ctx.fillStyle = even ? theme.floorA : theme.floorB;
-      ctx.fillRect(px,py,TILE,TILE);
-      ctx.fillStyle = even ? theme.floorInnerA : theme.floorInnerB;
-      ctx.fillRect(px+4,py+4,TILE-8,TILE-8);
-      ctx.fillStyle = theme.floorHighlight;
-      ctx.fillRect(px+6,py+6,TILE-24,6);
-      ctx.strokeStyle = theme.tileStroke;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(px+3,py+3,TILE-6,TILE-6);
-      ctx.fillStyle = theme.floorShadow;
-      ctx.fillRect(px+8,py+TILE-12,TILE-14,6);
-    }
-  }
+  ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle="#153052"; ctx.fillRect(0,0,canvas.width,canvas.height);
+  for (let y=0;y<ROWS;y++) for (let x=0;x<COLS;x++) { const px=x*TILE, py=y*TILE; const c1=(x+y)%2===0?"#16645f":"#1f7a72", c2=(x+y)%2===0?"#2fb49e":"#47cdb4"; ctx.fillStyle=c1; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle=c2; ctx.fillRect(px+4,py+4,TILE-8,TILE-8); ctx.fillStyle="rgba(255,255,255,0.16)"; ctx.fillRect(px+6,py+6,TILE-24,6); ctx.strokeStyle="rgba(8,23,41,0.24)"; ctx.lineWidth=2; ctx.strokeRect(px+3,py+3,TILE-6,TILE-6); ctx.fillStyle="rgba(0,0,0,0.18)"; ctx.fillRect(px+8,py+TILE-12,TILE-14,6); }
 }
-function drawSolidBlock(x,y){
-  const theme = getMapTheme();
-  const px=x*TILE, py=y*TILE;
-  ctx.fillStyle=theme.blockOuter;
-  ctx.fillRect(px,py,TILE,TILE);
-  ctx.fillStyle=theme.blockInner;
-  ctx.fillRect(px+4,py+4,TILE-8,TILE-8);
-  ctx.fillStyle=theme.blockHighlight;
-  ctx.fillRect(px+6,py+6,TILE-22,6);
-  ctx.fillRect(px+6,py+18,TILE-22,4);
-  ctx.fillStyle=theme.blockColumn;
-  ctx.fillRect(px+12,py+10,8,TILE-20);
-  ctx.fillRect(px+28,py+10,8,TILE-20);
-  ctx.fillStyle=theme.blockShadow;
-  ctx.fillRect(px+4,py+TILE-10,TILE-8,6);
-}
-function drawCrate(x,y){
-  const theme = getMapTheme();
-  const px=x*TILE, py=y*TILE;
-  ctx.fillStyle=theme.crateOuter;
-  ctx.fillRect(px+2,py+2,TILE-4,TILE-4);
-  ctx.fillStyle=theme.crateInner;
-  ctx.fillRect(px+5,py+5,TILE-10,TILE-10);
-  ctx.fillStyle=theme.crateCross;
-  ctx.fillRect(px+6,py+20,TILE-12,6);
-  ctx.fillRect(px+20,py+6,6,TILE-12);
-  ctx.fillStyle=theme.crateHighlight;
-  ctx.fillRect(px+8,py+8,TILE-26,5);
-  ctx.fillRect(px+8,py+8,5,TILE-26);
-}
+function drawSolidBlock(x,y){ const px=x*TILE, py=y*TILE; ctx.fillStyle="#586489"; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle="#b2c4f0"; ctx.fillRect(px+4,py+4,TILE-8,TILE-8); ctx.fillStyle="#dce7ff"; ctx.fillRect(px+6,py+6,TILE-22,6); ctx.fillRect(px+6,py+18,TILE-22,4); ctx.fillStyle="#536089"; ctx.fillRect(px+12,py+10,8,TILE-20); ctx.fillRect(px+28,py+10,8,TILE-20); ctx.fillStyle="#394568"; ctx.fillRect(px+4,py+TILE-10,TILE-8,6); }
+function drawCrate(x,y){ const px=x*TILE, py=y*TILE; ctx.fillStyle="#875622"; ctx.fillRect(px+2,py+2,TILE-4,TILE-4); ctx.fillStyle="#dfa05a"; ctx.fillRect(px+5,py+5,TILE-10,TILE-10); ctx.fillStyle="#7b4d18"; ctx.fillRect(px+6,py+20,TILE-12,6); ctx.fillRect(px+20,py+6,6,TILE-12); ctx.fillStyle="#e9c17f"; ctx.fillRect(px+8,py+8,TILE-26,5); ctx.fillRect(px+8,py+8,5,TILE-26); }
 function drawBoard(){ drawBoardBackground(); for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){ const cell=grid[y][x]; if(cell==="#") drawSolidBlock(x,y); else if(cell==="C") drawCrate(x,y); } }
 function drawBombs(now){ for(const bomb of bombs){ const x=bomb.tx*TILE+TILE/2, y=bomb.ty*TILE+TILE/2, pulse=1+0.07*Math.sin(now/85); ctx.save(); ctx.translate(x,y); ctx.scale(pulse,pulse); ctx.fillStyle="#1e2439"; ctx.beginPath(); ctx.arc(0,0,16,0,Math.PI*2); ctx.fill(); ctx.fillStyle="#434c6d"; ctx.beginPath(); ctx.arc(-4,-4,12,0,Math.PI*2); ctx.fill(); ctx.fillStyle="#ffffff"; ctx.beginPath(); ctx.arc(5,-7,4,0,Math.PI*2); ctx.fill(); ctx.strokeStyle="#ffcf53"; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(0,-14); ctx.lineTo(9,-25); ctx.stroke(); ctx.restore(); } }
 function drawFlameTile(tx,ty,now){ const px=tx*TILE, py=ty*TILE, flicker=Math.sin(now/50+tx*.8+ty)*2; ctx.fillStyle="rgba(255,240,168,0.55)"; ctx.fillRect(px+6,py+6,TILE-12,TILE-12); ctx.fillStyle="#ffcd48"; ctx.beginPath(); ctx.moveTo(px+TILE/2, py+4+flicker); ctx.lineTo(px+TILE-10, py+TILE/2-2); ctx.lineTo(px+TILE/2+4, py+TILE-5); ctx.lineTo(px+9, py+TILE/2+3); ctx.closePath(); ctx.fill(); ctx.fillStyle="#ff7b1f"; ctx.beginPath(); ctx.moveTo(px+TILE/2, py+10+flicker); ctx.lineTo(px+TILE-16, py+TILE/2); ctx.lineTo(px+TILE/2+3, py+TILE-11); ctx.lineTo(px+15, py+TILE/2+1); ctx.closePath(); ctx.fill(); ctx.fillStyle="#fff2a0"; ctx.beginPath(); ctx.arc(px+TILE/2, py+TILE/2, 6, 0, Math.PI*2); ctx.fill(); }
@@ -514,30 +494,64 @@ function drawPausedOverlay(){ if(!paused) return; ctx.fillStyle="rgba(10,14,32,0
 function drawFrame(){ const now=performance.now(); drawBoard(); drawPowerUps(now); drawBombs(now); drawFlames(now); drawPlayers(now); drawPausedOverlay(); }
 
 
-function resizeCanvasDisplay() {
-  const shellRect = arenaEl.getBoundingClientRect();
-  const style = getComputedStyle(arenaEl);
-  const padX = parseFloat(style.paddingLeft || 0) + parseFloat(style.paddingRight || 0);
-  const padY = parseFloat(style.paddingTop || 0) + parseFloat(style.paddingBottom || 0);
-  const headerHeight = arenaEl.querySelector(".arena-header")?.offsetHeight || 0;
-  const borderX = (arenaEl.offsetWidth - arenaEl.clientWidth);
-  const borderY = (arenaEl.offsetHeight - arenaEl.clientHeight);
-  const availableWidth = Math.max(240, Math.floor(shellRect.width - padX - borderX - 8));
-  const availableHeight = Math.max(180, Math.floor((document.fullscreenElement === appShell ? (window.innerHeight || arenaEl.clientHeight) : Math.min(window.innerHeight * 0.70, window.innerHeight - 180)) - headerHeight - padY - borderY - 8));
-  const aspect = canvas.width / canvas.height;
-  let drawWidth = availableWidth;
-  let drawHeight = Math.floor(drawWidth / aspect);
-  if (drawHeight > availableHeight) {
-    drawHeight = availableHeight;
-    drawWidth = Math.floor(drawHeight * aspect);
+function updateMusicVolumeUi() {
+  const pct = Math.round(musicVolume * 100);
+  if (musicVolumeEl) musicVolumeEl.value = String(pct);
+  if (musicVolumeValueEl) musicVolumeValueEl.textContent = `${pct}%`;
+  if (bgMusic) bgMusic.volume = musicVolume;
+  if (winnerAudioInstance) winnerAudioInstance.volume = musicVolume;
+  for (const audio of bombSoundPool) audio.volume = musicVolume;
+}
+
+function updateMusicButton() {
+  document.body.classList.remove("music-playing", "music-paused", "music-error");
+  if (!musicAvailable) {
+    document.body.classList.add("music-error");
+    musicBtn.textContent = "MUSIC: MISSING";
+    return;
   }
-  canvas.style.width = `${drawWidth}px`;
-  canvas.style.height = `${drawHeight}px`;
+  if (musicEnabled && !bgMusic.paused) {
+    document.body.classList.add("music-playing");
+    musicBtn.textContent = "MUSIC: ON";
+  } else {
+    document.body.classList.add("music-paused");
+    musicBtn.textContent = "MUSIC: OFF";
+  }
+}
+
+async function playMusic() {
+  if (!musicAvailable) return;
+  musicEnabled = true;
+  bgMusic.volume = musicVolume;
+  try {
+    await bgMusic.play();
+    document.body.classList.add("music-ready");
+  } catch (err) {
+    // Browser may require user interaction; keep enabled state and try again later.
+  }
+  updateMusicButton();
+}
+
+function stopMusic() {
+  musicEnabled = false;
+  bgMusic.pause();
+  updateMusicButton();
+}
+
+function toggleMusic() {
+  if (!musicAvailable) return;
+  if (musicEnabled && !bgMusic.paused) stopMusic();
+  else playMusic();
+}
+
+function tryAutoStartMusic() {
+  if (!musicAvailable || !musicEnabled || !bgMusic.paused) return;
+  playMusic();
 }
 
 function setBottomInfoCollapsed(collapsed){ controlsEl.classList.toggle("is-collapsed", collapsed); bottomInfoContent.hidden = collapsed; toggleInfoBtn.textContent = collapsed ? "SHOW INFO" : "HIDE INFO"; toggleInfoBtn.setAttribute("aria-expanded", String(!collapsed)); requestAnimationFrame(updateFullscreenLayout); }
 function togglePause(){ if(!gameOver){ paused=!paused; setStatus(paused?"PAUSED":"FIGHT!"); } }
-function updateFullscreenLayout(){ if(document.fullscreenElement !== appShell){ appShell.style.removeProperty("--fs-canvas-max-height"); resizeCanvasDisplay(); return; } const viewportHeight = window.innerHeight || appEl.clientHeight || 800; const usedHeight = topbarEl.offsetHeight + hudEl.offsetHeight + controlsEl.offsetHeight + 18; const arenaChrome = arenaEl.offsetHeight - arenaEl.clientHeight; const arenaHeader = arenaEl.querySelector(".arena-header")?.offsetHeight || 0; const available = Math.max(180, Math.floor(viewportHeight - usedHeight - arenaChrome - arenaHeader - 8)); appShell.style.setProperty("--fs-canvas-max-height", `${available}px`); resizeCanvasDisplay(); }
+function updateFullscreenLayout(){ if(document.fullscreenElement !== appShell){ appShell.style.removeProperty("--fs-canvas-max-height"); return; } const viewportHeight = window.innerHeight || appEl.clientHeight || 800; const usedHeight = topbarEl.offsetHeight + hudEl.offsetHeight + controlsEl.offsetHeight + 30; const arenaChrome = arenaEl.offsetHeight - arenaEl.clientHeight; const arenaHeader = arenaEl.querySelector(".arena-header")?.offsetHeight || 0; const available = Math.max(180, Math.floor(viewportHeight - usedHeight - arenaChrome - arenaHeader - 8)); appShell.style.setProperty("--fs-canvas-max-height", `${available}px`); }
 async function toggleFullscreen(){ if(document.fullscreenElement === appShell) { if(document.exitFullscreen) await document.exitFullscreen(); } else if(appShell.requestFullscreen) await appShell.requestFullscreen(); }
 function loop(timestamp){ const dt=Math.min(0.033, (timestamp-lastTimestamp)/1000 || 0); lastTimestamp=timestamp; if(!paused){ updatePlayers(dt); updateBombs(timestamp); updateFlames(timestamp); collectPowerUps(); damagePlayers(); } updateHud(); drawFrame(); requestAnimationFrame(loop); }
 
@@ -547,14 +561,34 @@ window.addEventListener("gamepadconnected", e => { setStatus(`PAD ${e.gamepad.in
 window.addEventListener("gamepaddisconnected", () => { setStatus("CONTROLLER REMOVED"); setTimeout(() => { if(!paused && !gameOver) setStatus("FIGHT!"); }, 1200); });
 document.addEventListener("fullscreenchange", () => { const active = document.fullscreenElement === appShell; document.body.classList.toggle("fullscreen-mode", active); fullscreenBtn.textContent = active ? "EXIT FULL SCREEN" : "FULL SCREEN"; requestAnimationFrame(updateFullscreenLayout); });
 window.addEventListener("resize", updateFullscreenLayout);
-mapSelectEl.addEventListener("change", e => { selectedMapKey = MAPS[e.target.value] ? e.target.value : "classic"; roundNumber = 1; scores = [0,0]; setStatus(`${getSelectedMap().name} LOADED`); resetRound(); resizeCanvasDisplay(); setTimeout(() => { if(!paused && !gameOver) setStatus("FIGHT!"); }, 1000); });
+mapSelectEl.addEventListener("change", e => { selectedMapKey = MAPS[e.target.value] ? e.target.value : "classic"; roundNumber = 1; scores = [0,0]; setStatus(`${getSelectedMap().name} LOADED`); resetRound(); setTimeout(() => { if(!paused && !gameOver) setStatus("FIGHT!"); }, 1000); });
 fullscreenBtn.addEventListener("click", toggleFullscreen);
-restartBtn.addEventListener("click", () => { roundNumber = 1; scores = [0,0]; resetRound(); resizeCanvasDisplay(); });
+restartBtn.addEventListener("click", () => { roundNumber = 1; scores = [0,0]; resetRound(); });
+musicBtn.addEventListener("click", toggleMusic);
+musicVolumeEl.addEventListener("input", () => {
+  musicVolume = Math.max(0, Math.min(1, Number(musicVolumeEl.value) / 100));
+  updateMusicVolumeUi();
+});
+["pointerdown", "keydown", "touchstart"].forEach(eventName => window.addEventListener(eventName, tryAutoStartMusic, { passive: true }));
+bgMusic.addEventListener("canplaythrough", () => { musicAvailable = true; document.body.classList.add("music-ready"); updateMusicButton(); });
+bgMusic.addEventListener("play", updateMusicButton);
+bgMusic.addEventListener("pause", updateMusicButton);
+bgMusic.addEventListener("error", () => { musicAvailable = false; musicEnabled = false; updateMusicButton(); });
+winnerMusic.addEventListener("canplaythrough", () => { winnerAvailable = true; });
+winnerMusic.addEventListener("error", () => { winnerAvailable = false; });
+bombSoundPool.forEach(audio => {
+  audio.addEventListener("canplaythrough", () => { bombSoundsAvailable = true; });
+  audio.addEventListener("error", () => {
+    bombSoundsAvailable = bombSoundPool.some(a => a.networkState !== HTMLMediaElement.NETWORK_NO_SOURCE);
+  });
+});
 toggleInfoBtn.addEventListener("click", () => setBottomInfoCollapsed(!controlsEl.classList.contains("is-collapsed")));
+if (winnerOkBtn) winnerOkBtn.addEventListener("click", confirmWinnerModal);
 
 setBottomInfoCollapsed(true);
+updateMusicVolumeUi();
+updateMusicButton();
 updateMapLabel();
 resetRound();
-resizeCanvasDisplay();
 updateFullscreenLayout();
 requestAnimationFrame(loop);

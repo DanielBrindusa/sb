@@ -26,6 +26,12 @@
               <option value="vault">ROYAL VAULT</option>
             </select>
           </label>
+          <button id="musicBtn" type="button">MUSIC: OFF</button>
+          <label class="volume-picker" for="musicVolume">
+            <span>VOL</span>
+            <input id="musicVolume" type="range" min="0" max="100" value="45" step="1" aria-label="Music volume" />
+            <strong id="musicVolumeValue">45%</strong>
+          </label>
           <button id="fullscreenBtn" type="button">FULL SCREEN</button>
           <button id="restartBtn" type="button">RESET MATCH</button>
         </div>
@@ -68,6 +74,13 @@
           <span>2P LOCAL VS</span>
         </div>
         <canvas id="gameCanvas" width="1980" height="1296" aria-label="Game area"></canvas>
+        <div class="winner-modal hidden" id="winnerModal" role="dialog" aria-modal="true" aria-labelledby="winnerModalTitle">
+          <div class="winner-modal-card">
+            <div class="winner-modal-kicker">MATCH RESULT</div>
+            <div class="winner-modal-title" id="winnerModalTitle">YOU WIN, PLAYER 1!</div>
+            <button id="winnerOkBtn" type="button">OK</button>
+          </div>
+        </div>
       </main>
 
       <section class="controls retro-frame is-collapsed" id="bottomInfoSection">
@@ -105,6 +118,7 @@
     </div>
   </div>
 
+    <audio id="bgMusic" src="misc/music.mp3" preload="auto" loop></audio>
   <script src="game.js"></script>
 </body>
 </html>

@@ -56,4 +56,25 @@ Open `index.html` in a browser.
 6. GitHub will generate a public link for the game
 
 
-Update: compacted the top HUD and fullscreen layout so the arena gets more visible space while still fitting the screen cleanly.
+Music support:
+- Put your MP3 file at `misc/music.mp3`
+- Use the `MUSIC` button to turn background music on or off
+- Browsers often require one click or key press before audio can start
+- If the MP3 file is missing, the button shows `MUSIC: MISSING`
+
+
+Music volume:
+- Use the VOL slider in the top bar to change the music volume from 0% to 100%.
+
+
+Additional audio support:
+- Winner jingle: misc/winner.mp3
+  - Plays when a round ends with a winning player.
+
+
+Additional audio files supported:
+- misc/winner.mp3
+- misc/soundeffect/bomb1.mp3
+- misc/soundeffect/bomb2.mp3
+- misc/soundeffect/bomb3.mp3
+- misc/soundeffect/bomb4.mp3
