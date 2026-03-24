@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Super Bomb Battle '93</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell" id="appShell">
+    <div class="scanlines"></div>
+    <div class="app">
+      <header class="marquee-frame topbar">
+        <div class="brand-block">
+          <div class="brand-kicker">LOCAL BATTLE MODE</div>
+          <h1>SUPER BOMB BATTLE '93</h1>
+          <p class="subtitle">Retro 2-player arena inspired by the classic 16-bit console era</p>
+        </div>
+        <div class="top-actions">
+          <label class="map-picker" for="mapSelect">
+            <span>ARENA</span>
+            <select id="mapSelect" aria-label="Choose arena map">
+              <option value="classic">CLASSIC RUINS</option>
+              <option value="crossfire">CROSSFIRE ALLEYS</option>
+              <option value="spiral">SPIRAL FORTRESS</option>
+              <option value="vault">ROYAL VAULT</option>
+            </select>
+          </label>
+          <button id="fullscreenBtn" type="button">FULL SCREEN</button>
+          <button id="restartBtn" type="button">RESET MATCH</button>
+        </div>
+      </header>
+
+      <section class="hud retro-frame">
+        <div class="hud-player player-one">
+          <div class="hud-title">PLAYER 1</div>
+          <div class="hud-row"><span>HP</span><strong id="p1Lives">3</strong></div>
+          <div class="hud-row"><span>BOMB</span><strong id="p1Bombs">0/2</strong></div>
+          <div class="hud-row"><span>FIRE</span><strong id="p1Power">1</strong></div>
+          <div class="hud-row"><span>SPEED</span><strong id="p1Speed">1</strong></div>
+          <div class="hud-row"><span>FX</span><strong id="p1Fx">-</strong></div>
+          <div class="pickup-message" id="p1PickupMessage" aria-live="polite">&nbsp;</div>
+        </div>
+
+        <div class="hud-center">
+          <div id="status" class="status-panel">FIGHT!</div>
+          <div class="center-meta">
+            <div class="round-box">ROUND <strong id="roundNumber">1</strong></div>
+            <div class="score-box"><span>P1</span> <strong id="p1Score">0</strong> <em>VS</em> <strong id="p2Score">0</strong> <span>P2</span></div>
+          </div>
+        </div>
+
+        <div class="hud-player player-two">
+          <div class="hud-title">PLAYER 2</div>
+          <div class="hud-row"><span>HP</span><strong id="p2Lives">3</strong></div>
+          <div class="hud-row"><span>BOMB</span><strong id="p2Bombs">0/2</strong></div>
+          <div class="hud-row"><span>FIRE</span><strong id="p2Power">1</strong></div>
+          <div class="hud-row"><span>SPEED</span><strong id="p2Speed">1</strong></div>
+          <div class="hud-row"><span>FX</span><strong id="p2Fx">-</strong></div>
+          <div class="pickup-message" id="p2PickupMessage" aria-live="polite">&nbsp;</div>
+        </div>
+      </section>
+
+      <main class="arena-shell retro-frame" id="gameWrap">
+        <div class="arena-header">
+          <span>STAGE BATTLE GRID</span>
+          <span id="mapNameLabel">CLASSIC RUINS</span>
+          <span>2P LOCAL VS</span>
+        </div>
+        <canvas id="gameCanvas" width="1980" height="1296" aria-label="Game area"></canvas>
+      </main>
+
+      <section class="controls retro-frame is-collapsed" id="bottomInfoSection">
+        <div class="controls-header">
+          <div class="controls-title-wrap">
+            <div class="controls-kicker">BOTTOM INFO</div>
+            <h2 class="controls-title">MATCH INFO &amp; CONTROLS</h2>
+          </div>
+          <button id="toggleInfoBtn" class="controls-toggle-button" type="button" aria-expanded="false" aria-controls="bottomInfoContent">SHOW INFO</button>
+        </div>
+        <div class="controls-content" id="bottomInfoContent" hidden>
+          <div class="control-card">
+            <h3>PLAYER 1</h3>
+            <p>W A S D = MOVE</p>
+            <p>F = DROP BOMB</p>
+          </div>
+          <div class="control-card">
+            <h3>PLAYER 2</h3>
+            <p>ARROWS = MOVE</p>
+            <p>ENTER = DROP BOMB</p>
+          </div>
+          <div class="control-card">
+            <h3>CONTROLLER</h3>
+            <p>STICK / D-PAD = MOVE</p>
+            <p>CROSS / A = DROP BOMB</p>
+            <p>RANDOM CRATE POWER-UPS</p>
+          </div>
+          <div class="control-card">
+            <h3>SYSTEM</h3>
+            <p>K = FULL SCREEN</p>
+            <p>P = PAUSE · R = RESET</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
